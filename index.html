@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>22 — Dika &amp; Sari</title>
+<link rel="icon" type="image/png" href="favicon-webRey.png"></link>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,500;1,600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     TOKEN SYSTEM
+     Palet   : langit malam (ink) + emas lilin (gold) + dusty rose
+     Display : Cormorant Garamond (italic untuk momen personal)
+     Body    : Jost, ringan, banyak letter-spacing
+     Signature: "Konstelasi Kenangan" — foto yang menyala seperti
+                bintang begitu terbuka, dihubungkan garis rasi
+     ============================================================ */
+  :root{
+    --ink-deep:#0a0a10;
+    --ink:#12121c;
+    --ink-soft:#1b1b28;
+    --gold:#d9a94e;
+    --gold-soft:#e8c98a;
+    --rose:#e3a3a8;
+    --cream:#f3ead9;
+    --cream-dim:#c9c2b2;
+    --line: rgba(217,169,78,0.28);
+    --shadow-gold: 0 0 24px rgba(217,169,78,0.35);
+    --ease: cubic-bezier(.22,.61,.36,1);
+    --vh: 1vh; /* fallback JS-driven viewport unit, lihat script di bawah */
+  }
+
+  *{
+  box-sizing:border-box; 
+  margin:0;
+   padding:0;
+  }
+  html,body{
+    height:100%;
+    overflow:hidden; /* halaman tidak pernah scroll sendiri -> tidak ada elemen "geser" aneh */
+    overscroll-behavior:none;
+  }
+  body{
+    background:var(--ink-deep);
+    color:var(--cream);
+    font-family:'Jost', sans-serif;
+    font-weight:300;
+    position:relative;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; transition-delay:0s !important;}
+  }
+
+  /* ---------- starfield backdrop (shared, fixed) ---------- */
+  #stars, #stars2{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+  }
+  .star{
+    position:absolute; width:2px; height:2px; border-radius:50%;
+    background:var(--cream); opacity:.5;
+    animation: twinkle var(--twinkle-dur, 4s) ease-in-out infinite,
+               drift var(--drift-dur, 30s) ease-in-out infinite alternate;
+  }
+  @keyframes twinkle{ 0%,100%{opacity:.15;} 50%{opacity:.85;} }
+  @keyframes drift{
+    from{ transform:translate(0,0); }
+    to{ transform:translate(var(--dx, 12px), var(--dy, -10px)); }
+  }
+
+  /* ---------- bintang jatuh (meteor) ---------- */
+  .shooting-star{
+    position:absolute;
+    top:0; left:0;
+    width:3px; height:3px;
+    border-radius:50%;
+    background:var(--cream);
+    box-shadow:0 0 8px 1px rgba(243,234,217,0.9);
+    opacity:0;
+    will-change: transform, opacity;
+    animation: shoot var(--fall-dur, 1.1s) linear forwards;
+  }
+  .shooting-star::before{
+    content:'';
+    position:absolute;
+    top:50%; left:50%;
+    width:110px; height:1px;
+    background:linear-gradient(90deg, rgba(243,234,217,0.9), rgba(243,234,217,0));
+    transform-origin:left center;
+    transform: translateY(-50%) rotate(180deg);
+  }
+  @keyframes shoot{
+    0%{ opacity:0; transform: translate(0,0) rotate(var(--angle,-30deg)); }
+    8%{ opacity:1; }
+    70%{ opacity:1; }
+    100%{ opacity:0; transform: translate(var(--travel-x,-320px), var(--travel-y,220px)) rotate(var(--angle,-30deg)); }
+  }
+
+  /* ---------- layout scaffolding ---------- */
+  #app{
+    position:fixed; inset:0; z-index:1;
+    height:100vh;   /* fallback */
+    height:calc(var(--vh, 1vh) * 100); /* fallback untuk browser lama */
+    height:100svh;  /* viewport stabil, tidak lompat saat address bar muncul/hilang */
+    width:100vw;
+    overflow:hidden; /* bingkai aplikasi tetap diam */
+  }
+  .screen{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding: clamp(3vh,7vh,8vh) clamp(4vw,6vw,6vw);
+    opacity:0; visibility:hidden; pointer-events:none;
+    transform: translateY(16px);
+    transition: opacity .9s var(--ease), transform .9s var(--ease), visibility 0s linear .9s;
+    overflow-y:auto;   /* konten yang lebih tinggi dari layar bisa discroll, TIDAK dipotong */
+    overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
+  .screen.active{
+    opacity:1; visibility:visible; pointer-events:auto; transform:translateY(0);
+    transition: opacity .9s var(--ease), transform .9s var(--ease), visibility 0s linear 0s;
+  }
+
+  .eyebrow{
+    font-size:.72rem; letter-spacing:.32em; text-transform:uppercase;
+    color:var(--gold-soft); margin-bottom:1.4rem; font-weight:500;
+  }
+
+  h1,h2{ font-family:'Cormorant Garamond', serif; font-weight:600; line-height:1.15; color:var(--cream);}
+  em{ font-style:italic; color:var(--gold-soft); }
+
+  .btn-glow{
+    margin-top:2.6rem;
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--gold-soft);
+    font-family:'Jost',sans-serif;
+    font-size:.82rem;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+    padding:1rem 2.4rem;
+    border-radius:2px;
+    cursor:pointer;
+    transition: box-shadow .4s ease, border-color .4s ease, background .4s ease, transform .3s ease;
+  }
+  .btn-glow:hover{ box-shadow:var(--shadow-gold); border-color:var(--gold); background:rgba(217,169,78,0.06); transform:translateY(-2px);}
+  .btn-glow:focus-visible{ outline:2px solid var(--gold); outline-offset:3px; }
+  .btn-glow:disabled{ opacity:.35; cursor:not-allowed; }
+
+  /* ================= SCREEN: INTRO ================= */
+  .intro-title{ font-size: clamp(2rem, 5vw, 3.4rem); max-width:16ch; }
+  .intro-sub{ margin-top:1.4rem; color:var(--cream-dim); font-size:1rem; max-width:34ch; }
+
+  /* ================= SCREEN: QUIZ ================= */
+  #screen-quiz{ justify-content:flex-start; padding-top:10vh; }
+  .quiz-header{ width:min(560px, 88vw); margin-bottom:3rem; }
+  .quiz-progress-label{ font-size:.75rem; letter-spacing:.14em; color:var(--cream-dim); text-transform:uppercase;}
+  .progress-track{ margin-top:.7rem; height:2px; width:100%; background:var(--ink-soft); border-radius:2px; overflow:hidden;}
+  .progress-fill{ height:100%; width:0%; background:linear-gradient(90deg, var(--gold), var(--rose)); transition:width .6s var(--ease); }
+
+  .quiz-card{ width:min(560px, 88vw); }
+  .quiz-eyebrow{ font-size:.72rem; letter-spacing:.28em; text-transform:uppercase; color:var(--rose); margin-bottom:1rem;}
+  #quiz-question{ font-size:clamp(1.5rem,3.4vw,2.1rem); margin-bottom:2.2rem; }
+
+  .quiz-options{ display:flex; flex-direction:column; gap:.9rem; }
+  .quiz-option{
+    background:var(--ink-soft);
+    border:1px solid rgba(255,255,255,0.06);
+    color:var(--cream);
+    font-family:'Jost',sans-serif;
+    font-size:.95rem;
+    padding:1rem 1.3rem;
+    border-radius:6px;
+    text-align:left;
+    cursor:pointer;
+    transition: border-color .3s ease, transform .2s ease, background .3s ease;
+  }
+  .quiz-option:hover{ border-color:var(--gold); transform:translateX(3px); }
+  .quiz-option.correct{ border-color:var(--gold); background:rgba(217,169,78,0.12); box-shadow:var(--shadow-gold);}
+  .quiz-option.wrong{ border-color:var(--rose); animation: shake .4s ease; }
+  .quiz-option:disabled{ cursor:default; }
+  @keyframes shake{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);} }
+
+  .quiz-feedback{ margin-top:1.4rem; min-height:1.4em; font-size:.9rem; color:var(--gold-soft); font-style:italic; }
+
+  /* ================= SCREEN: GALLERY (constellation) ================= */
+  #screen-gallery{ padding-top:clamp(4vh,7vh,8vh); }
+  .gallery-title{ font-size:clamp(1.5rem,3.6vw,2.4rem); margin-bottom:.5rem; }
+  .gallery-sub{ color:var(--cream-dim); font-size:.85rem; margin-bottom:clamp(1.2rem,2.4vh,2rem); }
+
+  .constellation{
+    position:relative;
+    width:min(640px, 86vw);
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:clamp(.7rem,1.6vh,1.3rem);
+    margin-bottom:.9rem;
+  }
+  .memory-slot{
+    position:relative;
+    aspect-ratio:4/5;
+    border-radius:6px;
+    background:var(--ink-soft);
+    border:1px solid rgba(255,255,255,0.06);
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+    transition: transform .5s var(--ease), box-shadow .5s ease, border-color .5s ease;
+  }
+  .memory-slot.locked{ }
+  .memory-slot.locked::after{
+    content:'✦'; color: rgba(217,169,78,0.35); font-size:1.4rem;
+  }
+  .memory-slot.unlocked{
+    border-color:var(--gold);
+    box-shadow:var(--shadow-gold);
+    cursor:pointer;
+    animation: reveal .7s var(--ease);
+  }
+  @keyframes reveal{ from{ transform:scale(.85); opacity:0;} to{ transform:scale(1); opacity:1;} }
+  .memory-slot img{ width:100%; height:100%; object-fit:cover; }
+  /* Kartu ikon dekoratif — dipakai selagi foto asli belum dipasang.
+     Tiap kenangan punya ikon beda (lihat quizData) biar grid gak
+     keliatan monoton, tapi tetap satu gaya visual yang senada. */
+  .memory-placeholder{
+    width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(circle at 50% 38%, rgba(217,169,78,0.10), transparent 60%),
+      linear-gradient(165deg, var(--ink-soft), var(--ink) 80%);
+  }
+  .memory-placeholder-icon{
+    font-size:1.9rem;
+    filter: drop-shadow(0 0 10px rgba(217,169,78,.35));
+    opacity:.9;
+  }
+  .memory-caption{
+    position:absolute; bottom:0; left:0; right:0;
+    background:linear-gradient(0deg, rgba(0,0,0,.75), transparent);
+    color:var(--cream); font-size:.7rem; letter-spacing:.05em;
+    padding:.6rem .5rem .4rem; text-align:left;
+  }
+
+  .gallery-pagination{
+    display:flex; align-items:center; gap:1.2rem;
+    margin-bottom:1.1rem;
+  }
+  .gallery-pagination button{
+    background:transparent; border:1px solid var(--line); color:var(--gold-soft);
+    font-family:'Jost',sans-serif; font-size:.72rem; letter-spacing:.1em;
+    padding:.55rem .9rem; border-radius:2px; cursor:pointer;
+    transition: border-color .3s ease, box-shadow .3s ease;
+  }
+  .gallery-pagination button:hover:not(:disabled){ border-color:var(--gold); box-shadow:var(--shadow-gold); }
+  .gallery-pagination button:disabled{ opacity:.3; cursor:not-allowed; }
+  .gallery-pagination .page-label{ font-size:.72rem; color:var(--cream-dim); letter-spacing:.08em; min-width:3.5em; }
+
+  /* lightbox */
+  #lightbox{
+    position:fixed; inset:0; background:rgba(6,6,10,.92); z-index:20;
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .35s ease;
+  }
+  #lightbox.active{ opacity:1; pointer-events:auto; }
+  #lightbox img{ max-width:82vw; max-height:78vh; border-radius:6px; box-shadow:0 0 40px rgba(217,169,78,.25); }
+  .lightbox-placeholder{
+    width:min(360px, 78vw); aspect-ratio:4/5;
+    border-radius:10px;
+    display:none; align-items:center; justify-content:center;
+    background:
+      radial-gradient(circle at 50% 38%, rgba(217,169,78,0.12), transparent 60%),
+      linear-gradient(165deg, var(--ink-soft), var(--ink) 80%);
+    border:1px solid var(--line);
+    box-shadow:0 0 40px rgba(217,169,78,.2);
+  }
+  .lightbox-placeholder-icon{ font-size:3.2rem; filter: drop-shadow(0 0 12px rgba(217,169,78,.4)); }
+  #lightbox-caption{ position:absolute; bottom:6vh; color:var(--cream-dim); font-size:.85rem; font-style:italic; }
+  #lightbox-close{ position:absolute; top:5vh; right:6vw; background:none; border:none; color:var(--cream); font-size:1.6rem; cursor:pointer; }
+
+  /* ================= SCREEN: VIDEO ================= */
+  .video-wrap{
+    position:relative;
+    width:min(640px, 90vw);
+    aspect-ratio:16/9;
+    margin-top:1.8rem; margin-bottom:1rem;
+    border-radius:8px; overflow:hidden;
+    border:1px solid var(--line);
+    box-shadow:var(--shadow-gold);
+    background:#000;
+  }
+  video{ width:100%; height:100%; object-fit:cover; }
+  /* Kartu placeholder video — tampil otomatis (lewat JS) kalau file
+     video asli belum dipasang, biar klien paham fiturnya & bisa
+     bayangin video mereka sendiri tampil di sana. */
+  .video-placeholder{
+    position:absolute; inset:0;
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    gap:1rem;
+    background:
+      radial-gradient(circle at 50% 35%, rgba(217,169,78,0.10), transparent 60%),
+      linear-gradient(165deg, var(--ink-soft), var(--ink) 85%);
+    color:var(--cream-dim);
+    padding:2rem;
+    text-align:center;
+  }
+  .video-placeholder-icon{
+    width:56px; height:56px; border-radius:50%;
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--gold-soft); font-size:1.15rem;
+    box-shadow:var(--shadow-gold);
+  }
+  .video-placeholder p{ font-size:.85rem; letter-spacing:.02em; max-width:32ch; }
+
+  /* ================= SCREEN: CLOSING ================= */
+  #wish-input{
+    margin-top:1.6rem;
+    width:min(520px, 88vw);
+    min-height:clamp(70px, 14vh, 120px);
+    background:var(--ink-soft);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:6px;
+    color:var(--cream);
+    font-family:'Jost',sans-serif;
+    font-size:.95rem;
+    padding:1rem;
+    resize:vertical;
+  }
+  #wish-input:focus-visible{ outline:2px solid var(--gold); }
+  .wish-saved{ margin-top:1.2rem; font-size:.85rem; color:var(--gold-soft); font-style:italic; min-height:1.4em; }
+
+  /* ---------- amplop tersegel (closing) ---------- */
+  .envelope-scene{ margin-top:3.4rem; display:flex; flex-direction:column; align-items:center; }
+  .envelope{
+    position:relative; width:220px; height:150px; margin:0 auto;
+    perspective:700px;
+    transform: rotateX(8deg);
+    transform-style: preserve-3d;
+    filter: drop-shadow(0 20px 18px rgba(0,0,0,.5));
+    cursor:pointer;
+  }
+  .envelope-body{
+    position:absolute; inset:0;
+    background:linear-gradient(160deg, #24242f, #15151d 75%);
+    border:1px solid var(--line);
+    border-radius:6px;
+    box-shadow: inset 0 0 0 1px rgba(217,169,78,.12), inset 0 -14px 24px rgba(0,0,0,.4);
+    overflow:hidden;
+  }
+  .envelope-body::before, .envelope-body::after{
+    content:''; position:absolute; bottom:0; width:50%; height:100%;
+  }
+  .envelope-body::before{
+    left:0; clip-path: polygon(0 100%, 100% 100%, 0 28%);
+    background:linear-gradient(115deg, rgba(0,0,0,.4), transparent 65%);
+  }
+  .envelope-body::after{
+    right:0; clip-path: polygon(100% 100%, 0 100%, 100% 28%);
+    background:linear-gradient(245deg, rgba(0,0,0,.4), transparent 65%);
+  }
+  /* Catatan: kertas di dalam amplop SENGAJA hanya menampilkan teks teaser
+     pendek yang tetap (bukan isi harapan asli) — supaya panjang harapan
+     apa pun tidak pernah membuatnya meluber keluar amplop. Isi harapan
+     yang sesungguhnya dibaca lewat #letter-modal saat amplop diklik. */
+  .envelope-letter{
+    position:absolute; left:10%; right:10%; top:-40%; height:66%;
+    background:linear-gradient(160deg, #fbf7ee, #ece2ca);
+    color:var(--ink-deep);
+    border-radius:2px; padding:.9rem 1rem;
+    font-family:'Cormorant Garamond', serif; font-style:italic;
+    font-size:.78rem; line-height:1.4;
+    overflow:hidden; z-index:1;
+    box-shadow:0 1px 0 rgba(255,255,255,.6) inset,
+               0 10px 20px rgba(0,0,0,.5),
+               0 3px 0 -1px #d8cdb2, 0 6px 0 -2px #cabfa6;
+    transition: top 1s var(--ease);
+  }
+  .envelope-letter.inside{ top:16%; }
+  .envelope-flap{
+    position:absolute; top:0; left:0; width:100%; height:58%;
+    background:linear-gradient(160deg, #2a2a39, #1a1a24 70%);
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    border-bottom:1px solid var(--line);
+    box-shadow: inset 0 2px 3px rgba(255,255,255,.05), inset 0 -6px 10px rgba(0,0,0,.35);
+    transform-origin: top center;
+    transform: rotateX(180deg);
+    transition: transform 1s var(--ease) .95s;
+    z-index:3;
+  }
+  .envelope-flap.closed{ transform: rotateX(0deg); transition-delay: .95s; }
+  .envelope-flap.peeking{ transform: rotateX(140deg); transition-delay: 0s; }
+  .wax-seal{
+    position:absolute; top:45%; left:50%;
+    transform:translate(-50%,-50%) scale(0);
+    width:44px; height:44px; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, #e08a4f, #7c3b20 75%);
+    color:var(--cream); font-family:'Cormorant Garamond', serif;
+    font-style:italic; font-weight:600; font-size:1.1rem;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 4px 10px rgba(0,0,0,.6),
+                inset 0 -3px 5px rgba(0,0,0,.4),
+                inset 0 2px 4px rgba(255,255,255,.3);
+    z-index:4;
+    transition: transform .5s var(--ease) 1.95s;
+  }
+  .wax-seal.show{ transform:translate(-50%,-50%) scale(1); }
+  .wax-seal.hide-peek{ transform:translate(-50%,-50%) scale(0); transition-delay:0s; }
+  .envelope-caption{
+    margin-top:2.6rem; font-size:.85rem; color:var(--cream-dim); font-style:italic;
+    opacity:0; transition: opacity .8s ease .3s;
+  }
+  .envelope-caption.show{ opacity:1; }
+  .envelope-hint{
+    margin-top:.6rem; font-size:.72rem; color:var(--cream-dim); opacity:.7;
+    letter-spacing:.05em;
+  }
+  .envelope-actions{ display:flex; gap:1rem; margin-top:1.8rem; }
+  .envelope-actions .btn-glow{ margin-top:0; font-size:.7rem; padding:.75rem 1.5rem; opacity:.85; }
+
+  /* ---------- modal: surat terbuka penuh ---------- */
+  #letter-modal{
+    position:fixed; inset:0; background:rgba(6,6,10,.86); z-index:25;
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .4s ease;
+    padding: 4vh 6vw;
+  }
+  #letter-modal.active{ opacity:1; pointer-events:auto; }
+  .letter-paper{
+    position:relative;
+    width:min(460px, 100%);
+    max-height:76vh;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    background:linear-gradient(160deg, #fbf7ee, #ece2ca);
+    color:var(--ink-deep);
+    border-radius:4px;
+    padding:2.6rem 2rem 2.2rem;
+    font-family:'Cormorant Garamond', serif;
+    font-style:italic;
+    font-size:1.08rem;
+    line-height:1.65;
+    box-shadow:0 20px 50px rgba(0,0,0,.6);
+    transform:scale(.85) translateY(20px);
+    transition: transform .45s var(--ease);
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+  #letter-modal.active .letter-paper{ transform:scale(1) translateY(0); }
+  .letter-close{
+    position:absolute; top:.7rem; right:.9rem;
+    background:none; border:none; font-size:1.4rem; cursor:pointer;
+    color:var(--ink-deep); opacity:.5;
+    font-family:'Jost',sans-serif; line-height:1;
+    padding:.3rem;
+  }
+  .letter-close:hover{ opacity:1; }
+
+  .closing-number{
+    font-family:'Cormorant Garamond', serif;
+    font-style:italic;
+    font-size:clamp(2.6rem, 9vh, 5rem);
+    color:transparent;
+    -webkit-text-stroke: 1px var(--gold);
+    line-height:1.25;
+    margin-top: 1em;
+    margin-bottom: .4rem;
+  }
+
+  /* ---------- audio toggle ---------- */
+  #audio-toggle{
+    position:fixed; bottom:4vh; right:5vw; z-index:15;
+    width:46px; height:46px; border-radius:50%;
+    background:var(--ink-soft); border:1px solid var(--line);
+    color:var(--gold-soft); font-size:1.1rem;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition: box-shadow .3s ease;
+  }
+  #audio-toggle:hover{ box-shadow:var(--shadow-gold); }
+
+  @media (max-width: 560px){
+    .constellation{ grid-template-columns:repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div id="stars"></div>
+<div id="stars2"></div>
+
+<div id="app">
+
+  <!-- ============ 1. INTRO ============ -->
+  <section id="screen-intro" class="screen active">
+    <p class="eyebrow">22 Tahun · Dika &amp; Sari</p>
+    <h1 class="intro-title">Sebelum kau lanjut,<br><em>pejamkan matamu</em> lima detik.</h1>
+    <p class="intro-sub">Ada beberapa kenangan yang tertidur di sini. Hanya kamu yang bisa membangunkannya satu per satu.</p>
+    <button id="btn-start" class="btn-glow">Bangunkan Kenangan</button>
+  </section>
+
+  <!-- ============ 2. KUIS ============ -->
+  <section id="screen-quiz" class="screen">
+    <div class="quiz-header">
+      <span class="quiz-progress-label">Kenangan terbuka: <span id="quiz-progress">0</span> / <span id="quiz-total">6</span></span>
+      <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+    </div>
+    <div class="quiz-card">
+      <p class="quiz-eyebrow" id="quiz-index">Pertanyaan 1</p>
+      <h2 id="quiz-question">Memuat…</h2>
+      <div id="quiz-options" class="quiz-options"></div>
+      <p id="quiz-feedback" class="quiz-feedback"></p>
+    </div>
+  </section>
+
+  <!-- ============ 3. GALERI / KONSTELASI ============ -->
+  <section id="screen-gallery" class="screen">
+    <p class="eyebrow">Konstelasi Kenangan</p>
+    <h2 class="gallery-title">Yang Telah Kau Bangunkan</h2>
+    <p class="gallery-sub">Sentuh tiap kenangan untuk melihatnya lebih dekat.</p>
+    <div id="constellation" class="constellation"></div>
+    <div id="gallery-pagination" class="gallery-pagination" hidden>
+      <button id="btn-page-prev" aria-label="Halaman sebelumnya">‹ Sebelumnya</button>
+      <span class="page-label" id="page-label">1 / 1</span>
+      <button id="btn-page-next" aria-label="Halaman berikutnya">Berikutnya ›</button>
+    </div>
+    <button id="btn-to-video" class="btn-glow">Lanjutkan</button>
+  </section>
+
+  <!-- ============ 4. VIDEO UCAPAN ============ -->
+  <section id="screen-video" class="screen">
+    <p class="eyebrow">Untuk Kamu</p>
+    <h2>Ada yang ingin disampaikan…</h2>
+    <div class="video-wrap">
+      <!-- GANTI: poster="foto-sampul-video.jpg" dan src video di bawah ini -->
+      <video id="msg-video" controls preload="metadata" poster="REPLACE_VIDEO_POSTER.jpg">
+        <source id="msg-video-source" src="REPLACE_VIDEO_UCAPAN.mp4" type="video/mp4">
+        Browser kamu tidak mendukung pemutaran video.
+      </video>
+      <div class="video-placeholder" id="video-placeholder">
+        <div class="video-placeholder-icon">►</div>
+        <p>Video ucapan pribadi kamu akan tampil di sini</p>
+      </div>
+    </div>
+    <button id="btn-to-closing" class="btn-glow">Lanjutkan</button>
+  </section>
+
+  <!-- ============ 5. PENUTUP ============ -->
+  <section id="screen-closing" class="screen">
+    <p class="eyebrow">Tahun ke-23 menanti</p>
+    <div class="closing-number">22</div>
+    <h2>Dan masih akan berlanjut…</h2>
+    <p class="intro-sub">Tulis satu harapan untuk tahun berikutnya. Begitu kau simpan, ia akan ditulis di atas kertas, dilipat, lalu disegel — menunggu tahun ke-23.</p>
+    <div id="wish-form">
+      <textarea id="wish-input" placeholder="Tulis harapanmu di sini…"></textarea>
+      <button id="btn-save-wish" class="btn-glow">Tulis &amp; Segel</button>
+      <p id="wish-saved" class="wish-saved"></p>
+    </div>
+
+    <div id="envelope-scene" class="envelope-scene" hidden>
+      <div class="envelope" id="envelope" role="button" tabindex="0" aria-label="Buka dan baca harapan yang tersegel">
+        <div class="envelope-letter" id="envelope-letter-text"></div>
+        <div class="envelope-body"></div>
+        <div class="envelope-flap" id="envelope-flap"></div>
+        <div class="wax-seal" id="wax-seal">22</div>
+      </div>
+      <p class="envelope-caption" id="envelope-caption">Tersegel. Sampai bertemu di tahun ke-23.</p>
+      <p class="envelope-hint">Sentuh amplop untuk membaca kembali</p>
+      <div class="envelope-actions">
+        <button id="btn-edit-wish" class="btn-glow">Tulis Ulang</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- lightbox untuk galeri -->
+<div id="lightbox">
+  <button id="lightbox-close" aria-label="Tutup">✕</button>
+  <img id="lightbox-img" src="" alt="">
+  <div id="lightbox-placeholder" class="lightbox-placeholder">
+    <div id="lightbox-placeholder-icon" class="lightbox-placeholder-icon"></div>
+  </div>
+  <p id="lightbox-caption"></p>
+</div>
+
+<!-- modal surat terbuka penuh (isi harapan asli dibaca di sini, bukan di dalam amplop) -->
+<div id="letter-modal" role="dialog" aria-modal="true" aria-label="Isi harapan">
+  <div class="letter-paper">
+    <button class="letter-close" id="letter-modal-close" aria-label="Tutup surat">✕</button>
+    <p id="letter-modal-text"></p>
+  </div>
+</div>
+
+<!-- tombol mute/unmute musik -->
+<button id="audio-toggle" aria-label="Nyalakan atau matikan musik">♪</button>
+
+<!-- GANTI: sumber musik latar romantis di sini -->
+<audio id="bg-music" loop>
+  <source src="lagu-ultah-nikah.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------------------------------------------------
+     0a. FIX TINGGI VIEWPORT MOBILE
+     100vh di HP goyang tiap address bar muncul/hilang -> ini
+     yang kerasa seperti "elemen ikut geser". CSS utama sudah
+     pakai 100svh (stabil), ini cuma fallback untuk browser lama
+     yang belum kenal svh/dvh.
+  --------------------------------------------------------- */
+  function setVH(){
+    document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+  }
+  setVH();
+  window.addEventListener('resize', setVH);
+  window.addEventListener('orientationchange', setVH);
+
+  /* ---------------------------------------------------------
+     0b. STARFIELD DEKORATIF
+  --------------------------------------------------------- */
+  const starsContainer = document.getElementById('stars');
+  const STAR_COUNT = 70;
+  for(let i=0;i<STAR_COUNT;i++){
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.left = Math.random()*100 + 'vw';
+    s.style.top = Math.random()*100 + 'vh';
+    s.style.animationDelay = (Math.random()*4) + 's, ' + (Math.random()*20) + 's';
+    s.style.width = s.style.height = (Math.random()*1.6+1) + 'px';
+    const dx = (Math.random()*40 - 20).toFixed(0) + 'px';
+    const dy = (Math.random()*30 - 15).toFixed(0) + 'px';
+    s.style.setProperty('--dx', dx);
+    s.style.setProperty('--dy', dy);
+    s.style.setProperty('--drift-dur', (Math.random()*25 + 20) + 's');
+    s.style.setProperty('--twinkle-dur', (Math.random()*3 + 3) + 's');
+    starsContainer.appendChild(s);
+  }
+
+  /* ---------------------------------------------------------
+     0c. BINTANG JATUH (meteor acak, muncul terus menerus)
+  --------------------------------------------------------- */
+  const shootingLayer = document.getElementById('stars2');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function spawnShootingStar(){
+    const star = document.createElement('div');
+    star.className = 'shooting-star';
+
+    const startXvw = Math.random()*70 + 10;   // mulai dari area atas
+    const startYvh = Math.random()*28;
+    const travelX = -(Math.random()*260 + 220); // px, jatuh ke kiri-bawah
+    const travelY = (Math.random()*190 + 150);
+    const angle = Math.atan2(travelY, travelX) * (180/Math.PI);
+    const dur = (Math.random()*0.7 + 0.9);
+
+    star.style.left = startXvw + 'vw';
+    star.style.top = startYvh + 'vh';
+    star.style.setProperty('--travel-x', travelX + 'px');
+    star.style.setProperty('--travel-y', travelY + 'px');
+    star.style.setProperty('--angle', angle + 'deg');
+    star.style.setProperty('--fall-dur', dur + 's');
+
+    shootingLayer.appendChild(star);
+    setTimeout(() => star.remove(), dur*1000 + 150);
+  }
+
+  function scheduleShootingStars(){
+    spawnShootingStar();
+    const nextIn = Math.random()*4200 + 2600; // tiap 2.6–6.8 detik
+    setTimeout(scheduleShootingStars, nextIn);
+  }
+  if(!reduceMotion){
+    setTimeout(scheduleShootingStars, 1400);
+  }
+
+  /* ---------------------------------------------------------
+     1. DATA — DEMO: kisah fiktif Dika & Sari.
+     Ini contoh isi untuk ditunjukkan ke calon klien (bukan
+     orang nyata). Kalau klien pesan versi asli, tinggal ganti
+     teks & foto sesuai cerita mereka sendiri dengan pola yang
+     sama: detail kecil + sensorik > kalimat umum.
+  --------------------------------------------------------- */
+  const quizData = [
+    {
+      question: "Di mana Dika &amp; Sari pertama kali bertemu?",
+      options: [
+        "Dikenalin temen kuliah di kantin",
+        "Nabrak di lorong toko buku, waktu hujan deras jam 5 sore",
+        "Ketemu di acara kondangan sepupu",
+        "Chat duluan di aplikasi kerja"
+      ],
+      correct: 1,
+      memory: {
+        img: "REPLACE_foto-1.jpg",
+        icon: "📖",
+        caption: "Toko buku itu, hujan itu, dan payung yang cuma satu untuk berdua."
+      }
+    },
+    {
+      question: "Apa makanan yang selalu mereka pesan tiap kali lagi capek atau baru gajian?",
+      options: [
+        "Sate ayam Bang Him deket kosan",
+        "Mie ayam langganan waktu masih pacaran",
+        "Nasi goreng gerobak depan kampus, jam 11 malam",
+        "Seblak yang pernah bikin Sari nangis kepedesan"
+      ],
+      correct: 2,
+      memory: {
+        img: "REPLACE_foto-2.jpg",
+        icon: "🍜",
+        caption: "Nasi goreng jam 11 malam, obrolan ngalor-ngidul, dan tawa yang gak pernah bosan."
+      }
+    },
+    {
+      question: "Lagu apa yang diputer ulang-ulang waktu mereka masih LDR-an?",
+      options: [
+        "Perahu Kertas — Maudy Ayunda",
+        "Lagu random dari radio taksi",
+        "Playlist galau bareng temen kosan",
+        "Lagu yang Dika nyanyiin asal-asalan lewat telepon"
+      ],
+      correct: 0,
+      memory: {
+        img: "REPLACE_foto-3.jpg",
+        icon: "🎵",
+        caption: "Setiap dengar lagu ini, Sari masih inget suara telepon jam 12 malam itu."
+      }
+    },
+    {
+      question: "Ke mana mereka pergi berdua pertama kali, patungan dari tabungan sendiri-sendiri?",
+      options: [
+        "Bandung, numpang di kosan temen",
+        "Gunung Bromo, lihat sunrise sambil menggigil kedinginan",
+        "Pantai deket kota, cuma sehari",
+        "Belum pernah kemana-mana"
+      ],
+      correct: 1,
+      memory: {
+        img: "REPLACE_foto-4.jpg",
+        icon: "🌄",
+        caption: "Dingin banget, tapi tangan yang digenggam itu yang bikin anget."
+      }
+    },
+    {
+      question: "Panggilan sayang yang cuma mereka berdua yang boleh pakai?",
+      options: [
+        "Sayang / Cinta (biasa aja)",
+        "\"Dedek\" — dari typo chat pertama yang gak pernah diralat",
+        "Nama panggilan dari keluarga",
+        "Julukan dari temen-temen kantor"
+      ],
+      correct: 1,
+      memory: {
+        img: "REPLACE_foto-5.jpg",
+        icon: "💬",
+        caption: "Typo kecil di chat pertama, jadi panggilan yang bertahan sampai sekarang."
+      }
+    },
+    {
+      question: "Momen apa yang bikin Dika yakin, \"dia jodoh gue\"?",
+      options: [
+        "Waktu Sari ulang tahun dan dikasih kejutan",
+        "Waktu jalan-jalan ke luar kota bareng",
+        "Waktu Sari sakit tipes dan Dika nungguin semalaman di rumah sakit tanpa disuruh",
+        "Waktu pertama kali dikenalin ke orang tua"
+      ],
+      correct: 2,
+      memory: {
+        img: "REPLACE_foto-6.jpg",
+        icon: "🤝",
+        caption: "Bukan pas lagi seneng-senengnya — tapi pas lagi capek-capeknya, dia tetep ada."
+      }
+    }
+  ];
+
+  /* ---------------------------------------------------------
+     2. STATE & DOM REFERENCES
+  --------------------------------------------------------- */
+  let currentQ = 0;
+  const unlockedMemories = [];
+
+  const screens = {
+    intro: document.getElementById('screen-intro'),
+    quiz: document.getElementById('screen-quiz'),
+    gallery: document.getElementById('screen-gallery'),
+    video: document.getElementById('screen-video'),
+    closing: document.getElementById('screen-closing'),
+  };
+
+  function goTo(name){
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+    screens[name].scrollTop = 0; // pastikan layar baru selalu mulai dari atas
+  }
+
+  /* ---------------------------------------------------------
+     3. MUSIK LATAR — volume naik seiring progres kuis
+  --------------------------------------------------------- */
+  const music = document.getElementById('bg-music');
+  const audioToggle = document.getElementById('audio-toggle');
+  let musicMuted = false;
+
+  function startMusic(){
+    music.volume = 0.12;
+    music.play().catch(()=>{ /* browser mungkin tetap memblokir; tombol toggle jadi cadangan */ });
+  }
+  function updateMusicVolume(){
+    if(musicMuted) return;
+    const progress = unlockedMemories.length / quizData.length; // 0..1
+    music.volume = Math.min(0.12 + progress * 0.35, 0.55);
+  }
+  audioToggle.addEventListener('click', () => {
+    musicMuted = !musicMuted;
+    music.muted = musicMuted;
+    audioToggle.textContent = musicMuted ? '✕' : '♪';
+  });
+
+  /* ---------------------------------------------------------
+     4. LAYAR INTRO
+  --------------------------------------------------------- */
+  document.getElementById('btn-start').addEventListener('click', () => {
+    startMusic();
+    document.getElementById('quiz-total').textContent = quizData.length;
+    renderQuestion();
+    goTo('quiz');
+  });
+
+  /* ---------------------------------------------------------
+     5. LAYAR KUIS
+  --------------------------------------------------------- */
+  const elQIndex = document.getElementById('quiz-index');
+  const elQuestion = document.getElementById('quiz-question');
+  const elOptions = document.getElementById('quiz-options');
+  const elFeedback = document.getElementById('quiz-feedback');
+  const elProgress = document.getElementById('quiz-progress');
+  const elProgressFill = document.getElementById('progress-fill');
+
+  function renderQuestion(){
+    const q = quizData[currentQ];
+    elQIndex.textContent = `Pertanyaan ${currentQ+1} dari ${quizData.length}`;
+    elQuestion.innerHTML = q.question;
+    elFeedback.textContent = '';
+    elOptions.innerHTML = '';
+
+    q.options.forEach((opt, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'quiz-option';
+      btn.innerHTML = opt;
+      btn.addEventListener('click', () => handleAnswer(idx, btn));
+      elOptions.appendChild(btn);
+    });
+  }
+
+  function handleAnswer(idx, btnEl){
+    const q = quizData[currentQ];
+    const allBtns = elOptions.querySelectorAll('.quiz-option');
+
+    if(idx === q.correct){
+      allBtns.forEach(b => b.disabled = true);
+      btnEl.classList.add('correct');
+      elFeedback.textContent = 'Benar. Satu kenangan baru saja terbuka…';
+
+      unlockedMemories.push(q.memory);
+      elProgress.textContent = unlockedMemories.length;
+      elProgressFill.style.width = (unlockedMemories.length / quizData.length * 100) + '%';
+      updateMusicVolume();
+
+      setTimeout(() => {
+        currentQ++;
+        if(currentQ < quizData.length){
+          renderQuestion();
+        } else {
+          renderGallery();
+          goTo('gallery');
+        }
+      }, 1100);
+    } else {
+      btnEl.classList.add('wrong');
+      elFeedback.textContent = 'Coba lagi. Ingat-ingat pelan-pelan…';
+      setTimeout(() => btnEl.classList.remove('wrong'), 400);
+    }
+  }
+
+  /* ---------------------------------------------------------
+     6. LAYAR GALERI / KONSTELASI (dengan pagination)
+     Kalau kenangan makin banyak (klien nambah pertanyaan &
+     foto), grid gak numpuk jadi satu halaman panjang — otomatis
+     kepecah per halaman via tombol Sebelumnya/Berikutnya.
+  --------------------------------------------------------- */
+  const constellationEl = document.getElementById('constellation');
+  const paginationEl = document.getElementById('gallery-pagination');
+  const btnPagePrev = document.getElementById('btn-page-prev');
+  const btnPageNext = document.getElementById('btn-page-next');
+  const pageLabel = document.getElementById('page-label');
+  let galleryPage = 0;
+
+  function getPageSize(){
+    return window.innerWidth <= 560 ? 4 : 6; // 2x2 di mobile, 3x2 di desktop
+  }
+
+  // Selama nama file foto masih placeholder ("REPLACE_..."), tampilkan
+  // kartu ikon dekoratif alih-alih foto rusak. Begitu klien ganti ke
+  // nama file foto asli, ini otomatis berhenti dipakai dan foto asli
+  // yang muncul — tidak perlu ubah kode apa pun.
+  function isDemoAsset(src){
+    return typeof src === 'string' && src.indexOf('REPLACE_') === 0;
+  }
+
+  function renderGallery(){
+    const pageSize = getPageSize();
+    const totalPages = Math.max(1, Math.ceil(quizData.length / pageSize));
+    galleryPage = Math.min(galleryPage, totalPages - 1);
+
+    const start = galleryPage * pageSize;
+    const end = start + pageSize;
+    const pageItems = quizData.slice(start, end);
+
+    constellationEl.innerHTML = '';
+    pageItems.forEach((q, i) => {
+      const idx = start + i;
+      const slot = document.createElement('div');
+      const isUnlocked = idx < unlockedMemories.length;
+      slot.className = 'memory-slot ' + (isUnlocked ? 'unlocked' : 'locked');
+
+      if(isUnlocked){
+        const isDemo = isDemoAsset(q.memory.img);
+
+        if(isDemo){
+          const ph = document.createElement('div');
+          ph.className = 'memory-placeholder';
+          const icon = document.createElement('div');
+          icon.className = 'memory-placeholder-icon';
+          icon.textContent = q.memory.icon || '✦';
+          ph.appendChild(icon);
+          slot.appendChild(ph);
+        } else {
+          const img = document.createElement('img');
+          img.src = q.memory.img;
+          img.alt = q.memory.caption;
+          img.loading = 'lazy';
+          slot.appendChild(img);
+        }
+
+        const cap = document.createElement('div');
+        cap.className = 'memory-caption';
+        cap.textContent = q.memory.caption;
+        slot.appendChild(cap);
+
+        slot.addEventListener('click', () => openLightbox(q.memory, isDemo));
+      }
+      constellationEl.appendChild(slot);
+    });
+
+    if(totalPages > 1){
+      paginationEl.hidden = false;
+      pageLabel.textContent = `${galleryPage + 1} / ${totalPages}`;
+      btnPagePrev.disabled = galleryPage === 0;
+      btnPageNext.disabled = galleryPage === totalPages - 1;
+    } else {
+      paginationEl.hidden = true;
+    }
+  }
+
+  btnPagePrev.addEventListener('click', () => { galleryPage--; renderGallery(); });
+  btnPageNext.addEventListener('click', () => { galleryPage++; renderGallery(); });
+
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightbox-img');
+  const lightboxPlaceholder = document.getElementById('lightbox-placeholder');
+  const lightboxPlaceholderIcon = document.getElementById('lightbox-placeholder-icon');
+  const lightboxCaption = document.getElementById('lightbox-caption');
+
+  function openLightbox(memory, isDemo){
+    if(isDemo){
+      lightboxImg.style.display = 'none';
+      lightboxPlaceholder.style.display = 'flex';
+      lightboxPlaceholderIcon.textContent = memory.icon || '✦';
+    } else {
+      lightboxPlaceholder.style.display = 'none';
+      lightboxImg.style.display = '';
+      lightboxImg.src = memory.img;
+      lightboxImg.alt = memory.caption;
+    }
+    lightboxCaption.textContent = memory.caption;
+    lightbox.classList.add('active');
+  }
+  document.getElementById('lightbox-close').addEventListener('click', () => {
+    lightbox.classList.remove('active');
+  });
+  lightbox.addEventListener('click', (e) => {
+    if(e.target === lightbox) lightbox.classList.remove('active');
+  });
+
+  document.getElementById('btn-to-video').addEventListener('click', () => {
+    goTo('video');
+  });
+
+  /* ---------------------------------------------------------
+     7. LAYAR VIDEO
+     Kalau file video asli belum dipasang (masih "REPLACE_..."),
+     tampilkan kartu placeholder biar orang paham fiturnya dan
+     bisa bayangin video mereka sendiri tampil di sana — tanpa
+     perlu bikin video contoh beneran.
+  --------------------------------------------------------- */
+  const msgVideo = document.getElementById('msg-video');
+  const msgVideoSource = document.getElementById('msg-video-source');
+  const videoPlaceholder = document.getElementById('video-placeholder');
+
+  if(isDemoAsset(msgVideoSource.getAttribute('src'))){
+    msgVideo.style.display = 'none';
+    videoPlaceholder.style.display = 'flex';
+  }
+
+  msgVideo.addEventListener('play', () => {
+    music.volume = 0.06; // musik latar mengecil saat video diputar
+  });
+  msgVideo.addEventListener('pause', updateMusicVolume);
+
+  document.getElementById('btn-to-closing').addEventListener('click', () => {
+    goTo('closing');
+  });
+
+  /* ---------------------------------------------------------
+     8. LAYAR PENUTUP — simpan harapan ke localStorage
+     Amplop cuma menampilkan teaser tetap (biar 3D-nya rapi &
+     gak pernah kepotong berapa pun panjang harapannya). Isi
+     harapan yang sesungguhnya dibuka lewat modal surat penuh.
+  --------------------------------------------------------- */
+  const ENVELOPE_TEASER = 'Untuk tahun ke-23…';
+  const wishInput = document.getElementById('wish-input');
+  const wishSaved = document.getElementById('wish-saved');
+  const wishForm = document.getElementById('wish-form');
+  const envelopeScene = document.getElementById('envelope-scene');
+  const envelope = document.getElementById('envelope');
+  const envelopeLetterText = document.getElementById('envelope-letter-text');
+  const envelopeFlap = document.getElementById('envelope-flap');
+  const waxSeal = document.getElementById('wax-seal');
+  const envelopeCaption = document.getElementById('envelope-caption');
+  const btnEditWish = document.getElementById('btn-edit-wish');
+  const letterModal = document.getElementById('letter-modal');
+  const letterModalText = document.getElementById('letter-modal-text');
+  const letterModalClose = document.getElementById('letter-modal-close');
+  const WISH_KEY = 'dika-sari-22-wish';
+
+  function sealEnvelope(animate){
+    envelopeLetterText.textContent = ENVELOPE_TEASER;
+    wishForm.style.display = 'none';
+    envelopeScene.hidden = false;
+
+    if(!animate){
+      // langsung ke kondisi akhir (mis. saat load ulang halaman)
+      envelopeLetterText.classList.add('inside');
+      envelopeFlap.classList.remove('peeking');
+      envelopeFlap.classList.add('closed');
+      waxSeal.classList.remove('hide-peek');
+      waxSeal.classList.add('show');
+      envelopeCaption.classList.add('show');
+      return;
+    }
+
+    // sequence: kertas masuk -> flap menutup -> wax seal muncul -> caption
+    requestAnimationFrame(() => {
+      envelopeLetterText.classList.add('inside');
+      envelopeFlap.classList.add('closed');
+      waxSeal.classList.add('show');
+      setTimeout(() => envelopeCaption.classList.add('show'), 2100);
+    });
+  }
+
+  function openLetterModal(){
+    if(envelopeScene.hidden) return;
+    const wish = localStorage.getItem(WISH_KEY) || '';
+    letterModalText.textContent = wish;
+
+    // amplop terbuka sedikit sebagai aksen 3D sebelum surat penuh muncul
+    envelopeFlap.classList.remove('closed');
+    envelopeFlap.classList.add('peeking');
+    waxSeal.classList.add('hide-peek');
+
+    letterModal.classList.add('active');
+  }
+
+  function closeLetterModal(){
+    letterModal.classList.remove('active');
+    envelopeFlap.classList.remove('peeking');
+    envelopeFlap.classList.add('closed');
+    waxSeal.classList.remove('hide-peek');
+  }
+
+  envelope.addEventListener('click', openLetterModal);
+  envelope.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openLetterModal(); }
+  });
+  letterModalClose.addEventListener('click', closeLetterModal);
+  letterModal.addEventListener('click', (e) => {
+    if(e.target === letterModal) closeLetterModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && letterModal.classList.contains('active')) closeLetterModal();
+  });
+
+  const existingWish = localStorage.getItem(WISH_KEY);
+  if(existingWish){
+    wishInput.value = existingWish;
+    sealEnvelope(false);
+  }
+
+  document.getElementById('btn-save-wish').addEventListener('click', () => {
+    const val = wishInput.value.trim();
+    if(!val){
+      wishSaved.textContent = 'Tulis sesuatu dulu, sebelum menyimpannya.';
+      return;
+    }
+    localStorage.setItem(WISH_KEY, val);
+    sealEnvelope(true);
+  });
+
+  btnEditWish.addEventListener('click', () => {
+    closeLetterModal();
+    envelopeScene.hidden = true;
+    envelopeLetterText.classList.remove('inside');
+    envelopeFlap.classList.remove('closed', 'peeking');
+    waxSeal.classList.remove('show', 'hide-peek');
+    envelopeCaption.classList.remove('show');
+    wishForm.style.display = '';
+    wishSaved.textContent = '';
+
+    // teks lama TETAP ada (biar bisa direvisi, gak kaget kosong),
+    // tapi langsung ke-select semua: user tinggal ketik kalau mau
+    // mulai dari nol, atau klik sekali kalau mau lanjut edit.
+    requestAnimationFrame(() => {
+      wishInput.focus();
+      wishInput.select();
+    });
+  });
+
+})();
+</script>
+</body>
+</html>
