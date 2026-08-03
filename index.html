@@ -817,6 +817,25 @@
     audioToggle.textContent = musicMuted ? '✕' : '♪';
   });
 
+    /* ---------- auto-pause saat user pindah tab / minimize ---------- */
+  (function(){
+    let wasPlayingBeforeHidden = false;
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // User meninggalkan tab (minimize / pindah app / pindah tab)
+        wasPlayingBeforeHidden = !music.paused && !musicMuted;
+        if (!music.paused) {
+          music.pause();
+        }
+      } else {
+        // User balik ke tab ini
+        if (wasPlayingBeforeHidden && !musicMuted) {
+          music.play().catch(() => {});
+        }
+      }
+    });
+  })();
+
   /* ---------------------------------------------------------
      4. LAYAR INTRO
   --------------------------------------------------------- */
